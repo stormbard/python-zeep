@@ -342,15 +342,16 @@ class Choice(OrderIndicator):
 
         """
         result = []
-
         for _unused in max_occurs_iter(self.max_occurs):
             if not xmlelements:
                 break
 
             # Choose out of multiple
+            i = 1
             options = []
             for element_name, element in self.elements_nested:
-
+                i += 1
+                print("ITERATION ", name, i, self.elements_nested)
                 local_xmlelements = copy.copy(xmlelements)
 
                 try:
@@ -382,10 +383,13 @@ class Choice(OrderIndicator):
             else:
                 break
 
+        print("RESULT BEFORE: ", result)
         if self.accepts_multiple:
             result = {name: result}
         else:
             result = result[0] if result else {}
+
+        print("RESULT AFTER: ", result)
         return result
 
     def parse_kwargs(self, kwargs, name, available_kwargs):
@@ -431,9 +435,11 @@ class Choice(OrderIndicator):
                             result.append({element.name: choice_value})
                             break
                 else:
+
                     raise TypeError(
                         "No complete xsd:Sequence found for the xsd:Choice %r.\n"
-                        "The signature is: %s" % (name, self.signature()))
+                        "The signature is: %s\n"
+                        "Got: %s" % (name, self.signature(), str(kwargs)))
 
             if not self.accepts_multiple:
                 result = result[0] if result else None
@@ -446,6 +452,7 @@ class Choice(OrderIndicator):
 
             # When choice elements are specified directly in the kwargs
             found = False
+
             for name, choice in self.elements_nested:
                 temp_kwargs = copy.copy(available_kwargs)
                 subresult = choice.parse_kwargs(kwargs, name, temp_kwargs)
@@ -585,6 +592,7 @@ class Sequence(OrderIndicator):
 
         """
         result = []
+        i = 1
 
         if self.accepts_multiple:
             assert name
@@ -592,6 +600,36 @@ class Sequence(OrderIndicator):
         for _unused in max_occurs_iter(self.max_occurs):
             if not xmlelements:
                 break
+
+            # disgusting hack
+            # for elm_name, element in self.elements:
+            #
+            #     if ('_value_2') == elm_name:
+            #         print("====")
+            #         print("====")
+            #         print("====")
+            #         print("====")
+            #         print("====")
+            #         print("====")
+            #         print("======================================================LOTS OF STUFF HERE DUDE, FFFF IT UP")
+            #         new_eles = []
+            #         for elm_name, element in self.elements:
+            #             if ('_value_1') == elm_name:
+            #                 tmp = element
+            #
+            #             elif ('_value_2') == elm_name:
+            #                 # print("OKAY BRO:\n", tmp.elements)
+            #                 # for e in element.elements:
+            #                 #     print("DERRR {}".format(e))
+            #                 #     tmp.elements.append(e)
+            #                 # print("HAHAH IT SORTA WORKED BRO:\n", tmp.elements)
+            #
+            #                 new_eles.append(('_value_1', tmp))
+            #             else:
+            #                 new_eles.append((elm_name, element))
+            #
+            #         self.elements = new_eles
+
 
             item_result = OrderedDict()
             for elm_name, element in self.elements:
@@ -604,7 +642,16 @@ class Sequence(OrderIndicator):
                     item_subresult = None
 
                 # Unwrap if allowed
-                if isinstance(element, OrderIndicator):
+                if isinstance(element, Choice):
+                    print("PARSING RES\nres: {} \nsubres: {}".format(item_result, item_subresult))
+                    if '_value_1' in item_result.keys() and '_value_1' in item_subresult.keys():
+                        i += 1
+                        item_subresult['_value_{}'.format(i)] = item_subresult.pop('_value_1')
+                        print("ALTERED? ", item_subresult)
+
+                    item_result.update(item_subresult)
+                    print("FINAL RES", item_result)
+                elif isinstance(element, OrderIndicator):
                     item_result.update(item_subresult)
                 else:
                     item_result[elm_name] = item_subresult
